@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f5f8fb">
+<title>TAPE À L'OEIL - Outing Raffle Ticket</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{box-sizing:border-box}
+:root{
+  --green:#009b54;
+  --green-dark:#007f45;
+  --orange:#f57a00;
+  --blue:#2f80ed;
+  --available:#eaf6ff;
+  --available-border:#d4e9f8;
+  --pending:#e8e8e8;
+  --pending-text:#777;
+  --purchased:#f58220;
+  --selected:#4d8df7;
+  --ink:#10233d;
+  --muted:#68758a;
+  --page:#f5f8fb;
+  --card:#fff;
+  --line:#dce3eb;
+}
+
+html,body{margin:0;padding:0;background:var(--page);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+body{min-height:100vh}
+
+.app{
+  width:100%;
+  max-width:760px;
+  margin:0 auto;
+  padding:10px 12px 115px;
+}
+
+.banner{
+  width:100%;
+  display:block;
+  aspect-ratio:525/171;
+  object-fit:cover;
+  border-radius:12px;
+  border:1px solid #dce2e8;
+  background:#eee;
+}
+
+.top-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:8px;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid #e1e5ea;
+  border-radius:12px;
+  min-height:118px;
+  box-shadow:0 1px 2px rgba(15,23,42,.03);
+}
+
+.price-card{
+  background:var(--green);
+  color:#071c13;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.price-card .small{font-size:14px;margin-bottom:5px}
+.price-card .price{font-size:27px;font-weight:800}
+
+.organizer{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.organizer .label{
+  font-size:12px;
+  color:#68758a;
+  font-weight:700;
+  letter-spacing:.3px;
+  margin-bottom:7px;
+}
+.organizer .name{font-size:16px;font-weight:800}
+.support{
+  margin-top:13px;
+  padding:8px 14px;
+  border:1px solid #cdebdc;
+  background:#f5fffa;
+  border-radius:10px;
+  color:var(--green-dark);
+  font-weight:700;
+  font-size:12px;
+  text-decoration:none;
+}
+
+.payment{
+  margin-top:8px;
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 18px;
+}
+.payment-left{font-size:14px}
+.payment-left strong{color:var(--green);margin-right:8px}
+.copy-btn{
+  width:38px;height:34px;
+  border:0;border-radius:8px;
+  background:var(--green);
+  color:#fff;
+  font-size:18px;
+  cursor:pointer;
+}
+.copy-btn:active{transform:scale(.96)}
+
+.notice{
+  margin-top:8px;
+  background:#fff;
+  border-left:3px solid #00ae61;
+  border-radius:10px;
+  padding:20px 18px;
+  color:#6c7890;
+  font-size:14px;
+  line-height:1.45;
+}
+
+.toolbar{
+  display:grid;
+  grid-template-columns:1fr 48px;
+  gap:8px;
+  margin-top:24px;
+}
+.search-wrap{
+  height:44px;
+  border:1px solid var(--line);
+  background:#f1f5f9;
+  border-radius:11px;
+  display:flex;
+  align-items:center;
+  padding:0 13px;
+}
+.search-icon{color:#607086;font-size:19px;margin-right:10px}
+#search{
+  border:0;outline:0;background:transparent;
+  width:100%;font-size:14px;color:var(--ink);
+}
+.filter-btn{
+  height:44px;border:1px solid var(--line);
+  border-radius:11px;background:#f1f5f9;
+  color:#607086;font-size:20px;cursor:pointer;
+}
+
+.legend{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:13px 1px 0;
+  font-size:11px;
+  color:#68758a;
+}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:3px;border:1px solid #d7dee6}
+.dot.available{background:var(--available)}
+.dot.pending{background:var(--pending)}
+.dot.purchased{background:var(--purchased);border-color:var(--purchased)}
+.dot.selected{background:var(--selected);border-color:var(--selected)}
+
+.ticket-grid{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:7px;
+  margin-top:12px;
+}
+
+.ticket{
+  min-height:58px;
+  border-radius:9px;
+  border:1px solid var(--available-border);
+  background:var(--available);
+  color:#0e2844;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .08s, box-shadow .12s, background .12s;
+}
+.ticket:active{transform:scale(.97)}
+.ticket.pending{
+  background:var(--pending);
+  border-color:#ddd;
+  color:var(--pending-text);
+  cursor:not-allowed;
+}
+.ticket.purchased{
+  background:var(--purchased);
+  border-color:var(--purchased);
+  color:#fff;
+  cursor:not-allowed;
+}
+.ticket.selected{
+  background:var(--selected);
+  border-color:var(--selected);
+  color:#fff;
+  box-shadow:0 0 0 2px rgba(47,128,237,.16);
+}
+.ticket.hidden{display:none}
+
+.empty{
+  grid-column:1/-1;
+  padding:30px 10px;
+  text-align:center;
+  color:#7b8798;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+
+.bottom-bar{
+  position:fixed;
+  z-index:20;
+  left:50%;
+  bottom:0;
+  transform:translateX(-50%);
+  width:min(760px,100%);
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+  background:rgba(245,248,251,.96);
+  backdrop-filter:blur(10px);
+  border-top:1px solid #dfe5ec;
+}
+.bottom-inner{
+  background:#fff;
+  border:1px solid #dfe5ec;
+  border-radius:14px;
+  padding:9px 11px;
+  box-shadow:0 -2px 14px rgba(15,23,42,.07);
+}
+.summary{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+  font-size:13px;
+}
+.summary strong{font-size:16px}
+.buy-btn{
+  width:100%;
+  height:45px;
+  border:0;
+  border-radius:10px;
+  background:var(--green);
+  color:#fff;
+  font-size:15px;
+  font-weight:800;
+  cursor:pointer;
+}
+.buy-btn:disabled{background:#b9c5c0;cursor:not-allowed}
+
+.modal-backdrop{
+  position:fixed;inset:0;z-index:50;
+  background:rgba(10,20,35,.48);
+  display:none;align-items:flex-end;justify-content:center;
+  padding:12px;
+}
+.modal-backdrop.show{display:flex}
+.modal{
+  width:min(560px,100%);
+  background:#fff;border-radius:18px;
+  padding:20px;
+  max-height:90vh;overflow:auto;
+}
+.modal h2{margin:0 0 6px;font-size:20px}
+.modal p{margin:0 0 16px;color:#69778a;font-size:13px;line-height:1.45}
+.form-group{margin-top:12px}
+.form-group label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+.form-group input{
+  width:100%;height:44px;
+  border:1px solid #d6dee7;border-radius:9px;
+  padding:0 12px;font-size:14px;outline:0;
+}
+.form-group input:focus{border-color:var(--green)}
+.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}
+.modal-btn{height:44px;border:0;border-radius:9px;font-weight:800;cursor:pointer}
+.cancel{background:#edf0f3;color:#3f4b5a}
+.submit{background:var(--green);color:#fff}
+.modal-message{margin-top:12px;font-size:13px;font-weight:700;display:none}
+.modal-message.show{display:block}
+.success{color:#16804a}
+.error{color:#b42318}
+
+@media(max-width:600px){
+  .app{padding:10px 13px 115px}
+  .ticket-grid{grid-template-columns:repeat(4,1fr);gap:7px}
+  .ticket{min-height:52px;font-size:13px}
+}
+@media(max-width:390px){
+  .top-grid{gap:8px}
+  .card{min-height:112px}
+  .ticket-grid{grid-template-columns:repeat(3,1fr)}
+  .ticket{min-height:54px}
+}
+@media(min-width:601px){
+  .app{padding-left:18px;padding-right:18px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <img class="banner" src="raffle-banner.jpg" alt="TAPE À L'OEIL Outing Raffle Ticket">
+
+  <div class="top-grid">
+    <div class="card price-card">
+      <div class="small">For Only</div>
+      <div class="price">৳50.00</div>
+    </div>
+
+    <div class="card organizer">
+      <div class="label">ORGANIZER</div>
+      <div class="name">Jahid, Sajjadul &amp; Wahid</div>
+      <a class="support" href="https://wa.me/8801969497530" target="_blank" rel="noopener">
+        Support &nbsp; ☎
+      </a>
+    </div>
+  </div>
+
+  <div class="card payment">
+    <div class="payment-left">
+      <strong>Payment:</strong> bKash
+      <span id="bkashNumber">01969497530</span>
+    </div>
+    <button class="copy-btn" onclick="copyBkash()" aria-label="Copy bKash number">▣</button>
+  </div>
+
+  <div class="notice">
+    Please Check All Details Before Purchase
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input id="search" type="search" inputmode="numeric" placeholder="Search numbers" autocomplete="off">
+    </div>
+    <button class="filter-btn" onclick="toggleFilter()" aria-label="Filter tickets">⚱</button>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot available"></i> Available</span>
+    <span><i class="dot pending"></i> Pending</span>
+    <span><i class="dot purchased"></i> Purchased</span>
+    <span><i class="dot selected"></i> Selected</span>
+  </div>
+
+  <div id="ticketGrid" class="ticket-grid">
+    <div class="empty">Loading tickets...</div>
+  </div>
+
+</div>
+
+<div class="bottom-bar">
+  <div class="bottom-inner">
+    <div class="summary">
+      <div>Selected: <strong id="selectedCount">0</strong></div>
+      <div>Total: <strong id="totalPrice">৳0.00</strong></div>
+    </div>
+    <button id="buyBtn" class="buy-btn" disabled onclick="openPurchaseModal()">
+      Select at least 10 tickets
+    </button>
+  </div>
+</div>
+
+<div id="ticketConfirmation" class="modal-backdrop">
+  <div class="modal">
+    <h2>🎉 Ticket Reserved</h2>
+    <p id="confirmationText">Your ticket numbers are shown below.</p>
+    <div id="confirmedTickets" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0;"></div>
+    <div style="background:#fff8e8;border:1px solid #f2d79b;border-radius:10px;padding:12px;font-size:13px;line-height:1.45;color:#6d5520;">
+      <strong>Status: Pending Confirmation</strong><br>
+      Your payment will be checked by the organizer. Once confirmed, these same ticket numbers will remain yours.
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn submit" onclick="closeTicketConfirmation()">Done</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="purchaseModal" class="modal-backdrop">
+  <div class="modal">
+    <h2>Complete Your Purchase</h2>
+    <p id="purchaseSummary"></p>
+
+    <div class="form-group">
+      <label for="customerName">Name</label>
+      <input id="customerName" type="text" maxlength="100" placeholder="Enter your name">
+    </div>
+
+    <div class="form-group">
+      <label for="customerPhone">Phone Number</label>
+      <input id="customerPhone" type="tel" inputmode="tel" maxlength="20" placeholder="Enter your phone number">
+    </div>
+
+    <div class="form-group">
+      <label for="transactionId">bKash Transaction ID</label>
+      <input id="transactionId" type="text" maxlength="50" placeholder="Enter bKash Transaction ID">
+    </div>
+
+    <div id="modalMessage" class="modal-message"></div>
+
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closePurchaseModal()">Cancel</button>
+      <button id="submitBtn" class="modal-btn submit" onclick="submitPurchase()">Submit Purchase</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://gecixotkipxfhopmnwpg.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_yjX-ZYnmOP4di_3MhxvHig_0xvNE9YU";
+
+const PRICE = 50;
+const MIN_TICKETS = 10;
+const BKASH_NUMBER = "01969497530";
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+let allTickets = [];
+let selectedTickets = new Set();
+let filterMode = "all";
+
+const ticketGrid = document.getElementById("ticketGrid");
+const searchInput = document.getElementById("search");
+const selectedCountEl = document.getElementById("selectedCount");
+const totalPriceEl = document.getElementById("totalPrice");
+const buyBtn = document.getElementById("buyBtn");
+
+async function loadTickets() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("public_tickets")
+      .select("ticket_id,status")
+      .order("ticket_id", { ascending: true });
+
+    if (error) throw error;
+
+    allTickets = data || [];
+
+    const validIds = new Set(allTickets.map(t => t.ticket_id));
+    selectedTickets.forEach(id => {
+      if (!validIds.has(id) || allTickets.find(t => t.ticket_id === id)?.status !== "available") {
+        selectedTickets.delete(id);
+      }
+    });
+
+    renderTickets();
+    updateSummary();
+  } catch (error) {
+    console.error(error);
+    ticketGrid.innerHTML = `<div class="empty">Unable to load tickets. Please try again.</div>`;
+  }
+}
+
+function getShortNumber(ticketId) {
+  const match = String(ticketId).match(/-(\d+)$/);
+  return match ? match[1] : ticketId;
+}
+
+function renderTickets() {
+  const query = searchInput.value.trim().toLowerCase();
+
+  const filtered = allTickets.filter(ticket => {
+    const shortNumber = getShortNumber(ticket.ticket_id).toLowerCase();
+
+    const matchesSearch =
+      !query ||
+      ticket.ticket_id.toLowerCase().includes(query) ||
+      shortNumber.includes(query);
+
+    let matchesFilter = true;
+
+    if (filterMode === "available") matchesFilter = ticket.status === "available";
+    if (filterMode === "pending") matchesFilter = ticket.status === "pending";
+    if (filterMode === "purchased") matchesFilter = ticket.status === "purchased";
+    if (filterMode === "selected") matchesFilter = selectedTickets.has(ticket.ticket_id);
+
+    return matchesSearch && matchesFilter;
+  });
+
+  ticketGrid.innerHTML = "";
+
+  if (!filtered.length) {
+    ticketGrid.innerHTML = `<div class="empty">No matching tickets found.</div>`;
+    return;
+  }
+
+  filtered.forEach(ticket => {
+    const btn = document.createElement("button");
+    btn.className = "ticket";
+
+    if (ticket.status === "pending") btn.classList.add("pending");
+    if (ticket.status === "purchased") btn.classList.add("purchased");
+    if (selectedTickets.has(ticket.ticket_id)) btn.classList.add("selected");
+
+    btn.textContent = getShortNumber(ticket.ticket_id);
+
+    btn.title = `${ticket.ticket_id} - ${ticket.status}`;
+
+    if (ticket.status === "available") {
+      btn.onclick = () => toggleTicket(ticket.ticket_id);
+    } else {
+      btn.disabled = true;
+    }
+
+    ticketGrid.appendChild(btn);
+  });
+}
+
+function toggleTicket(ticketId) {
+  const ticket = allTickets.find(t => t.ticket_id === ticketId);
+
+  if (!ticket || ticket.status !== "available") return;
+
+  if (selectedTickets.has(ticketId)) {
+    selectedTickets.delete(ticketId);
+  } else {
+    selectedTickets.add(ticketId);
+  }
+
+  renderTickets();
+  updateSummary();
+}
+
+function updateSummary() {
+  const count = selectedTickets.size;
+  const total = count * PRICE;
+
+  selectedCountEl.textContent = count;
+  totalPriceEl.textContent = `৳${total.toFixed(2)}`;
+
+  if (count < MIN_TICKETS) {
+    buyBtn.disabled = true;
+    buyBtn.textContent = `Select ${MIN_TICKETS - count} more ticket${MIN_TICKETS - count === 1 ? "" : "s"}`;
+  } else {
+    buyBtn.disabled = false;
+    buyBtn.textContent = "BUY TICKETS";
+  }
+}
+
+function toggleFilter() {
+  const modes = ["all", "available", "pending", "purchased", "selected"];
+  const labels = {
+    all: "All",
+    available: "Available",
+    pending: "Pending",
+    purchased: "Purchased",
+    selected: "Selected"
+  };
+
+  const currentIndex = modes.indexOf(filterMode);
+  filterMode = modes[(currentIndex + 1) % modes.length];
+
+  document.querySelector(".filter-btn").title = `Filter: ${labels[filterMode]}`;
+  renderTickets();
+}
+
+searchInput.addEventListener("input", renderTickets);
+
+function showTicketConfirmation(ticketIds) {
+  const box = document.getElementById("confirmedTickets");
+  box.innerHTML = "";
+
+  ticketIds.forEach(id => {
+    const item = document.createElement("div");
+    item.style.cssText =
+      "background:#eaf6ff;border:1px solid #d4e9f8;border-radius:9px;padding:12px 8px;text-align:center;font-weight:800;color:#10233d;font-size:13px;";
+    item.textContent = id;
+    box.appendChild(item);
+  });
+
+  document.getElementById("confirmationText").textContent =
+    `${ticketIds.length} ticket${ticketIds.length === 1 ? "" : "s"} reserved successfully.`;
+
+  document.getElementById("ticketConfirmation").classList.add("show");
+}
+
+function closeTicketConfirmation() {
+  document.getElementById("ticketConfirmation").classList.remove("show");
+}
+
+
+function openPurchaseModal() {
+  if (selectedTickets.size < MIN_TICKETS) {
+    alert(`Minimum purchase is ${MIN_TICKETS} tickets.`);
+    return;
+  }
+
+  document.getElementById("purchaseSummary").textContent =
+    `${selectedTickets.size} tickets selected — Total ৳${(selectedTickets.size * PRICE).toFixed(2)}.`;
+
+  clearModalMessage();
+  document.getElementById("purchaseModal").classList.add("show");
+}
+
+function closePurchaseModal() {
+  document.getElementById("purchaseModal").classList.remove("show");
+}
+
+async function submitPurchase() {
+  const name = document.getElementById("customerName").value.trim();
+  const phone = document.getElementById("customerPhone").value.trim();
+  const transactionId = document.getElementById("transactionId").value.trim();
+  const submitBtn = document.getElementById("submitBtn");
+
+  if (!name) {
+    showModalMessage("Please enter your name.", "error");
+    return;
+  }
+
+  if (!phone) {
+    showModalMessage("Please enter your phone number.", "error");
+    return;
+  }
+
+  if (!transactionId) {
+    showModalMessage("Please enter your bKash Transaction ID.", "error");
+    return;
+  }
+
+  if (selectedTickets.size < MIN_TICKETS) {
+    showModalMessage(`Minimum purchase is ${MIN_TICKETS} tickets.`, "error");
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting...";
+
+  try {
+    const { data, error } = await supabaseClient.rpc("reserve_tickets", {
+      p_ticket_ids: Array.from(selectedTickets),
+      p_name: name,
+      p_phone: phone,
+      p_transaction_id: transactionId
+    });
+
+    if (error) throw error;
+
+    if (!data || data.success !== true) {
+      throw new Error(data?.message || "Unable to reserve tickets.");
+    }
+
+    const confirmedTicketIds = Array.from(selectedTickets).sort();
+
+    selectedTickets.clear();
+    await loadTickets();
+
+    closePurchaseModal();
+    showTicketConfirmation(confirmedTicketIds);
+
+    document.getElementById("customerName").value = "";
+    document.getElementById("customerPhone").value = "";
+    document.getElementById("transactionId").value = "";
+
+    alert("Your tickets have been submitted successfully. Please wait for confirmation.");
+
+  } catch (error) {
+    console.error(error);
+    showModalMessage(error.message || "Unable to submit your purchase.", "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit Purchase";
+  }
+}
+
+async function copyBkash() {
+  try {
+    await navigator.clipboard.writeText(BKASH_NUMBER);
+    const btn = document.querySelector(".copy-btn");
+    const old = btn.textContent;
+    btn.textContent = "✓";
+    setTimeout(() => btn.textContent = old, 1200);
+  } catch (error) {
+    alert(`bKash Number: ${BKASH_NUMBER}`);
+  }
+}
+
+function showModalMessage(message, type) {
+  const el = document.getElementById("modalMessage");
+  el.className = `modal-message show ${type}`;
+  el.textContent = message;
+}
+
+function clearModalMessage() {
+  const el = document.getElementById("modalMessage");
+  el.className = "modal-message";
+  el.textContent = "";
+}
+
+document.getElementById("purchaseModal").addEventListener("click", e => {
+  if (e.target.id === "purchaseModal") closePurchaseModal();
+});
+
+loadTickets();
+
+setInterval(loadTickets, 10000);
+</script>
+
+</body>
+</html>
